@@ -1,0 +1,16 @@
+{
+  "eventVersion": "1.08",
+  "eventTime": "2026-08-05T14:08:30Z",
+  "eventSource": "sts.amazonaws.com",
+  "eventName": "GetCallerIdentity",
+  "awsRegion": "us-east-1",
+  "sourceIPAddress": "198.51.100.42",
+  "userAgent": "aws-cli/2.15.0 Python/3.11.8 Linux/6.6.0-fedora-x86_64",
+  "userIdentity": {
+    "type": "IAMUser",
+    "principalId": "AIDAEXAMPLEUSERID",
+    "arn": "arn:aws:iam::123456789012:user/tsingh",
+    "accountId": "123456789012",
+    "userName": "tsingh"
+  }
+}

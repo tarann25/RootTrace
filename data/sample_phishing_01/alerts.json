@@ -1,0 +1,52 @@
+{
+  "timestamp": "2026-08-05T14:05:10.880+0000",
+  "rule": {
+    "id": "88204",
+    "level": 12,
+    "description": "High Risk Identity Sign-in: Successful login via known malicious VPN exit node with passkey bypass / downgrade.",
+    "groups": ["identity", "authentication", "risky_sign_in", "vpn_anomaly"]
+  },
+  "agent": {
+    "id": "001",
+    "name": "idp-sso-gateway",
+    "ip": "10.0.0.5"
+  },
+  "data": {
+    "identity": {
+      "user_principal_name": "tsingh@corp.internal",
+      "target_user": "tsingh"
+    },
+    "authentication": {
+      "result_code": "SUCCESS",
+      "auth_method_used": "Password_Plus_SMS_Fallback",
+      "passkey_info": {
+        "passkey_enrolled": true,
+        "passkey_prompted": false,
+        "passkey_status": "BYPASSED_VIA_DOWNGRADE",
+        "reason": "Attacker forced legacy MFA fallback option"
+      }
+    },
+    "network": {
+      "srcip": "198.51.100.42",
+      "is_anonymous_vpn": true,
+      "vpn_provider": "Mullvad_VPN_Exit_Node",
+      "geo_location": {
+        "country": "Netherlands",
+        "city": "Amsterdam",
+        "latitude": 52.3676,
+        "longitude": 4.9041
+      }
+    },
+    "device_info": {
+      "device_id": "UNMANAGED_DEVICE_0912",
+      "is_compliant": false,
+      "is_managed": false,
+      "os": "Linux x86_64",
+      "browser": "Firefox 128.0",
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0"
+    }
+  },
+  "decoder": {
+    "name": "okta_azuread_sso"
+  }
+}

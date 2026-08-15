@@ -1,0 +1,6 @@
+fastapi
+pydantic>=2.0.0
+uvicorn
+jinja2
+requests
+sqlalchemy

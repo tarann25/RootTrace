@@ -1,0 +1,38 @@
+{
+  "timestamp": "2026-08-05T14:00:10.120Z",
+  "event_type": "email_reception",
+  "connection_status": "SUCCESS",
+  "sender": {
+    "envelope_from": "hr-update@attacker-redirect.com",
+    "header_from": "hr-department@corp.internal",
+    "sender_ip": "198.51.100.42",
+    "mail_server_hostname": "mail.attacker-redirect.com"
+  },
+  "recipient": "tsingh@corp.internal",
+  "subject": "URGENT: Verify Your Direct Deposit Information",
+  "headers": {
+    "message_id": "<202608051400.x88120@attacker-redirect.com>",
+    "return_path": "<hr-update@attacker-redirect.com>",
+    "content_type": "multipart/related; boundary=\"----=_NextPart_000_01D9\"",
+    "x_mailer": "Custom Python Script v2.1"
+  },
+  "authentication_results": {
+    "spf": "softfail",
+    "dkim": "fail",
+    "dmarc": "fail"
+  },
+  "body_analysis": {
+    "urls_detected": [
+      "http://login-payroll-update.com/auth/login.php?id=99281"
+    ],
+    "images_embedded": [
+      {
+        "filename": "company_logo_spoofed.png",
+        "cid": "image001.png@01D9881A",
+        "mime_type": "image/png",
+        "size_bytes": 14200
+      }
+    ]
+  },
+  "action_taken": "delivered_to_inbox"
+}

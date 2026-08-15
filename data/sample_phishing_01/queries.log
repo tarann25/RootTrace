@@ -1,0 +1,2 @@
+05-Aug-2026 14:02:15.104 client 10.0.1.50#52140 (login-payroll-update.com): query: login-payroll-update.com IN A + (10.0.1.1)
+05-Aug-2026 14:02:15.188 client 10.0.1.50#52140 (login-payroll-update.com): response: NOERROR 103.21.244.12
