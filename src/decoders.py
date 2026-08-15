@@ -22,6 +22,13 @@ def decode_wazuh(log: dict) -> CanonicalEventRecord:
         source_ip=network.get("srcip"),
         event_type=rule.get("description", "wazuh_alert"),
         log_source="wazuh",
+        metadata={
+            "auth_method": data.get("authentication", {}).get("auth_method_used"),
+            "passkey_status": data.get("authentication", {}).get("passkey_info", {}).get("passkey_status"),
+            "vpn_provider": network.get("vpn_provider"),
+            "device": data.get("device_info", {}).get("os"),
+            "browser": data.get("device_info", {}).get("browser")
+        },
         raw_ref=log
     )
 
@@ -42,5 +49,10 @@ def decode_cloudtrail(log: dict) -> CanonicalEventRecord:
         source_ip=log.get("sourceIPAddress"),
         event_type=log.get("eventName", "cloudtrail_event"),
         log_source="cloudtrail",
+        metadata={
+            "user_agent": log.get("userAgent"),
+            "arn": user_identity.get("arn"),
+            "account_id": user_identity.get("accountId")
+        },
         raw_ref=log
     )

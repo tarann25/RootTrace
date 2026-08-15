@@ -13,6 +13,7 @@ def extract_from_unstructured(log_text: str, log_source: str) -> CanonicalEventR
     prompt = f"""
 You are an expert security analyst. Extract the relevant fields from the following unstructured log entry.
 Return ONLY a valid JSON object matching this schema exactly. Do not output any markdown formatting or extra text.
+CRITICAL: Squeeze as much context out of the log as possible! Place all extra contextual details (like URLs, User Agents, Sender addresses, action statuses, DNS resolution IPs, HTTP methods) into the 'metadata' dict field.
 Schema:
 {json.dumps(schema_definition, indent=2)}
 

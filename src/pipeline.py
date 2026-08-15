@@ -57,9 +57,17 @@ def run_pipeline():
         print(f"\n=== {cluster.cluster_id} ===")
         print(f"Shared Entities: {', '.join(cluster.entities)}")
         print("Chronological Timeline Skeleton:")
+        # Make all datetimes naive to prevent comparison errors
+        for e in cluster.events:
+            if e.timestamp_utc.tzinfo is not None:
+                e.timestamp_utc = e.timestamp_utc.replace(tzinfo=None)
+                
         # Stage 4 preview: chronologically sorted
         for e in sorted(cluster.events, key=lambda x: x.timestamp_utc):
             print(f"  [{e.timestamp_utc}] ({e.log_source}) -> User: {e.user} | IP: {e.source_ip} | Type: {e.event_type}")
+            if e.metadata:
+                metadata_str = ", ".join([f"{k}: {v}" for k, v in e.metadata.items() if v])
+                print(f"      |_ Metadata: {metadata_str}")
 
 if __name__ == "__main__":
     run_pipeline()
