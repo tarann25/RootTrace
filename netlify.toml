@@ -1,0 +1,11 @@
+# Netlify configuration for RootTrace Frontend
+[build]
+  base = "frontend"
+  publish = "dist"
+  command = "npm run build"
+
+# Single Page App routing - redirects all requests to index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
