@@ -23,12 +23,15 @@ import {
   Radio,
   ArrowRight,
   PlusCircle,
-  FileCode
+  FileCode,
+  Settings,
+  Server,
+  Link2
 } from 'lucide-react';
 import './App.css';
 import { DEMO_INCIDENT } from './demoData';
 
-const API_BASE = import.meta.env.VITE_API_BASE || '/api';
+const DEFAULT_API_BASE = import.meta.env.VITE_API_BASE || '/api';
 
 const apiFetch = async (url, options = {}) => {
   const headers = {
@@ -54,16 +57,25 @@ export default function App() {
   const [correlatingPhase, setCorrelatingPhase] = useState('Ingesting heterogeneous log files...');
   const [correlateProgress, setCorrelateProgress] = useState(15);
   
+  // Dynamic API Configuration (supports ngrok or custom backends without redeploying Netlify)
+  const [apiBase, setApiBase] = useState(() => {
+    return localStorage.getItem('roottrace_custom_api') || DEFAULT_API_BASE;
+  });
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const [customApiInput, setCustomApiInput] = useState('');
+  const [isTestingApi, setIsTestingApi] = useState(false);
+  const [apiFeedback, setApiFeedback] = useState(null);
+
   const fileInputRef = useRef(null);
 
   useEffect(() => {
-    checkHealth();
-    fetchIncidents();
-  }, []);
+    checkHealth(apiBase);
+    fetchIncidents(apiBase);
+  }, [apiBase]);
 
-  const checkHealth = async () => {
+  const checkHealth = async (baseUrl = apiBase) => {
     try {
-      const res = await apiFetch(`${API_BASE}/health`);
+      const res = await apiFetch(`${baseUrl}/health`);
       if (res.ok) {
         const data = await res.json();
         setHealthStatus({ online: true, ollama: data.ollama_available });
@@ -73,6 +85,55 @@ export default function App() {
     } catch {
       setHealthStatus({ online: false, ollama: false });
     }
+  };
+
+  const handleSaveAndTestApi = async () => {
+    let url = customApiInput.trim();
+    if (!url) return;
+    url = url.replace(/\/+$/, '');
+    if (!url.endsWith('/api')) {
+      url = `${url}/api`;
+    }
+    setIsTestingApi(true);
+    setApiFeedback(null);
+    try {
+      const res = await apiFetch(`${url}/health`);
+      if (res.ok) {
+        const data = await res.json();
+        localStorage.setItem('roottrace_custom_api', url);
+        setApiBase(url);
+        setHealthStatus({ online: true, ollama: data.ollama_available });
+        setApiFeedback({
+          type: 'success',
+          message: `Connected successfully! Ollama (${data.model || 'qwen2.5:7b'}): ${data.ollama_available ? 'Online' : 'Offline'}`
+        });
+        fetchIncidents(url);
+      } else {
+        setApiFeedback({
+          type: 'error',
+          message: `Endpoint returned HTTP ${res.status}. Verify ngrok is forwarding to port 8000.`
+        });
+      }
+    } catch (err) {
+      setApiFeedback({
+        type: 'error',
+        message: `Failed to reach ${url}. Make sure ./ngrok http 8000 is active.`
+      });
+    } finally {
+      setIsTestingApi(false);
+    }
+  };
+
+  const handleResetApi = () => {
+    localStorage.removeItem('roottrace_custom_api');
+    setApiBase(DEFAULT_API_BASE);
+    setCustomApiInput('');
+    setApiFeedback({
+      type: 'success',
+      message: `Reset to default (${DEFAULT_API_BASE}).`
+    });
+    checkHealth(DEFAULT_API_BASE);
+    fetchIncidents(DEFAULT_API_BASE);
   };
 
   const downloadReportFile = () => {
@@ -89,9 +150,9 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
-  const fetchIncidents = async () => {
+  const fetchIncidents = async (baseUrl = apiBase) => {
     try {
-      const res = await apiFetch(`${API_BASE}/incidents`);
+      const res = await apiFetch(`${baseUrl}/incidents`);
       if (res.ok) {
         const list = await res.json();
         setIncidents(list);
@@ -101,9 +162,9 @@ export default function App() {
     }
   };
 
-  const fetchIncidentDetails = async (id) => {
+  const fetchIncidentDetails = async (id, baseUrl = apiBase) => {
     try {
-      const res = await apiFetch(`${API_BASE}/incidents/${id}`);
+      const res = await apiFetch(`${baseUrl}/incidents/${id}`);
       if (res.ok) {
         const data = await res.json();
         setIncidentData(data);
@@ -116,7 +177,7 @@ export default function App() {
 
   const createNewIncident = async (title = 'Multi-Source Incident Analysis') => {
     try {
-      const res = await apiFetch(`${API_BASE}/incidents`, {
+      const res = await apiFetch(`${apiBase}/incidents`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title })
@@ -187,7 +248,7 @@ export default function App() {
         formData.append('files', file);
       });
 
-      await apiFetch(`${API_BASE}/incidents/${incidentId}/upload`, {
+      await apiFetch(`${apiBase}/incidents/${incidentId}/upload`, {
         method: 'POST',
         body: formData
       });
@@ -202,7 +263,7 @@ export default function App() {
 
       // 3. Call reconstruct (which calls Ollama)
       setCorrelatingPhase('Synthesizing executive root cause narrative via Local LLM (qwen2.5:7b)...');
-      const res = await apiFetch(`${API_BASE}/incidents/${incidentId}/reconstruct`, {
+      const res = await apiFetch(`${apiBase}/incidents/${incidentId}/reconstruct`, {
         method: 'POST'
       });
 
@@ -236,7 +297,7 @@ export default function App() {
     try {
       const incidentId = await createNewIncident('Phishing-to-Cloud Reconnaissance Investigation');
       if (incidentId) {
-        await apiFetch(`${API_BASE}/incidents/${incidentId}/load-sample`, { method: 'POST' });
+        await apiFetch(`${apiBase}/incidents/${incidentId}/load-sample`, { method: 'POST' });
         setCorrelateProgress(50);
         setCorrelatingPhase('Mapping Wazuh, CloudTrail, Proxy, DNS & Email into Canonical Records...');
         await new Promise(r => setTimeout(r, 600));
@@ -244,7 +305,7 @@ export default function App() {
         setCorrelateProgress(75);
         setCorrelatingPhase('Executing dynamic entity correlation & synthesizing narrative via LLM...');
 
-        const res = await apiFetch(`${API_BASE}/incidents/${incidentId}/reconstruct`, { method: 'POST' });
+        const res = await apiFetch(`${apiBase}/incidents/${incidentId}/reconstruct`, { method: 'POST' });
         setCorrelateProgress(95);
         setCorrelatingPhase('Finalizing forensic incident response report...');
 
@@ -331,7 +392,16 @@ export default function App() {
         </div>
 
         <div className="nav-actions">
-          <div className="status-badge" title={healthStatus.online ? "Local Ollama Inference Engine Connected" : "Static Demo Mode active on Netlify"}>
+          <div 
+            className="status-badge" 
+            onClick={() => {
+              setCustomApiInput(apiBase === DEFAULT_API_BASE ? '' : apiBase);
+              setApiFeedback(null);
+              setShowConfigModal(true);
+            }}
+            style={{ cursor: 'pointer' }}
+            title="Click to configure Backend or ngrok tunnel URL"
+          >
             <span className={`pulse-dot ${healthStatus.ollama ? 'online' : healthStatus.online ? 'working' : 'online'}`}></span>
             <span>
               {healthStatus.ollama 
@@ -340,6 +410,7 @@ export default function App() {
                   ? 'Backend: Online (Ollama Offline)' 
                   : 'Cloud Demo Mode (Netlify)'}
             </span>
+            <Settings size={13} style={{ marginLeft: 6, opacity: 0.7 }} />
           </div>
 
           {viewMode === 'dashboard' && (
@@ -795,6 +866,95 @@ export default function App() {
             </div>
           )}
         </>
+      )}
+
+      {/* Backend & ngrok Connection Modal */}
+      {showConfigModal && (
+        <div className="modal-overlay" onClick={() => setShowConfigModal(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 className="modal-title">
+                <Server size={20} color="var(--cyan)" />
+                <span>Connect Local Backend / ngrok</span>
+              </h3>
+              <button className="btn-icon" onClick={() => setShowConfigModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <p style={{ margin: '0 0 16px 0', fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+              Connect this Netlify frontend to your local computer's FastAPI backend and Ollama LLM engine.
+            </p>
+
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Backend / ngrok URL
+              </label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input 
+                  type="text" 
+                  style={{ flex: 1, padding: '10px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-bright)', background: 'var(--bg-dark)', color: 'var(--text-primary)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}
+                  placeholder="https://xxxx-xx-xx-xx.ngrok-free.app/api"
+                  value={customApiInput}
+                  onChange={(e) => setCustomApiInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleSaveAndTestApi();
+                  }}
+                />
+                <button 
+                  className="btn btn-primary"
+                  onClick={handleSaveAndTestApi}
+                  disabled={isTestingApi || !customApiInput.trim()}
+                  style={{ whiteSpace: 'nowrap' }}
+                >
+                  {isTestingApi ? <RefreshCw size={14} className="spin" /> : <Link2 size={14} />}
+                  <span>Connect</span>
+                </button>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                  Active Endpoint: <code style={{ color: 'var(--cyan)' }}>{apiBase}</code>
+                </span>
+                <button 
+                  style={{ background: 'none', border: 'none', color: 'var(--cyan)', fontSize: '0.78rem', cursor: 'pointer', textDecoration: 'underline' }}
+                  onClick={handleResetApi}
+                >
+                  Reset to Default
+                </button>
+              </div>
+            </div>
+
+            {apiFeedback && (
+              <div style={{ 
+                padding: '10px 14px', 
+                borderRadius: 'var(--radius-sm)', 
+                background: apiFeedback.type === 'success' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                border: `1px solid ${apiFeedback.type === 'success' ? 'var(--emerald)' : 'var(--crimson)'}`,
+                marginBottom: '16px',
+                fontSize: '0.84rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                color: apiFeedback.type === 'success' ? 'var(--emerald)' : 'var(--crimson)'
+              }}>
+                {apiFeedback.type === 'success' ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
+                <span>{apiFeedback.message}</span>
+              </div>
+            )}
+
+            <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '14px 16px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+              <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>
+                ⚡ Quick 2-Step Terminal Setup:
+              </div>
+              <div style={{ fontFamily: 'var(--font-mono)', background: 'rgba(0,0,0,0.4)', padding: '6px 10px', borderRadius: '4px', marginBottom: '6px', color: 'var(--cyan)' }}>
+                ./ngrok http 8000
+              </div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                Copy the <code>https://...ngrok-free.app</code> forwarding URL from your terminal and paste it above!
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
