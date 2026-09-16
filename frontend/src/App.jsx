@@ -30,6 +30,14 @@ import { DEMO_INCIDENT } from './demoData';
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api';
 
+const apiFetch = async (url, options = {}) => {
+  const headers = {
+    ...(options.headers || {}),
+    'ngrok-skip-browser-warning': 'true'
+  };
+  return fetch(url, { ...options, headers });
+};
+
 export default function App() {
   // viewMode: 'upload' | 'correlating' | 'dashboard'
   const [viewMode, setViewMode] = useState('upload');
@@ -55,7 +63,7 @@ export default function App() {
 
   const checkHealth = async () => {
     try {
-      const res = await fetch(`${API_BASE}/health`);
+      const res = await apiFetch(`${API_BASE}/health`);
       if (res.ok) {
         const data = await res.json();
         setHealthStatus({ online: true, ollama: data.ollama_available });
@@ -83,7 +91,7 @@ export default function App() {
 
   const fetchIncidents = async () => {
     try {
-      const res = await fetch(`${API_BASE}/incidents`);
+      const res = await apiFetch(`${API_BASE}/incidents`);
       if (res.ok) {
         const list = await res.json();
         setIncidents(list);
@@ -95,7 +103,7 @@ export default function App() {
 
   const fetchIncidentDetails = async (id) => {
     try {
-      const res = await fetch(`${API_BASE}/incidents/${id}`);
+      const res = await apiFetch(`${API_BASE}/incidents/${id}`);
       if (res.ok) {
         const data = await res.json();
         setIncidentData(data);
@@ -108,7 +116,7 @@ export default function App() {
 
   const createNewIncident = async (title = 'Multi-Source Incident Analysis') => {
     try {
-      const res = await fetch(`${API_BASE}/incidents`, {
+      const res = await apiFetch(`${API_BASE}/incidents`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title })
@@ -179,7 +187,7 @@ export default function App() {
         formData.append('files', file);
       });
 
-      await fetch(`${API_BASE}/incidents/${incidentId}/upload`, {
+      await apiFetch(`${API_BASE}/incidents/${incidentId}/upload`, {
         method: 'POST',
         body: formData
       });
@@ -194,7 +202,7 @@ export default function App() {
 
       // 3. Call reconstruct (which calls Ollama)
       setCorrelatingPhase('Synthesizing executive root cause narrative via Local LLM (qwen2.5:7b)...');
-      const res = await fetch(`${API_BASE}/incidents/${incidentId}/reconstruct`, {
+      const res = await apiFetch(`${API_BASE}/incidents/${incidentId}/reconstruct`, {
         method: 'POST'
       });
 
@@ -228,7 +236,7 @@ export default function App() {
     try {
       const incidentId = await createNewIncident('Phishing-to-Cloud Reconnaissance Investigation');
       if (incidentId) {
-        await fetch(`${API_BASE}/incidents/${incidentId}/load-sample`, { method: 'POST' });
+        await apiFetch(`${API_BASE}/incidents/${incidentId}/load-sample`, { method: 'POST' });
         setCorrelateProgress(50);
         setCorrelatingPhase('Mapping Wazuh, CloudTrail, Proxy, DNS & Email into Canonical Records...');
         await new Promise(r => setTimeout(r, 600));
@@ -236,7 +244,7 @@ export default function App() {
         setCorrelateProgress(75);
         setCorrelatingPhase('Executing dynamic entity correlation & synthesizing narrative via LLM...');
 
-        const res = await fetch(`${API_BASE}/incidents/${incidentId}/reconstruct`, { method: 'POST' });
+        const res = await apiFetch(`${API_BASE}/incidents/${incidentId}/reconstruct`, { method: 'POST' });
         setCorrelateProgress(95);
         setCorrelatingPhase('Finalizing forensic incident response report...');
 
